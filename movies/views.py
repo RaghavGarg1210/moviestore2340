@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from .models import Movie, Review, Rating
-from django.contrib.auth.decorators import login_required
-from django.db.models import Avg
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.db.models import Avg, Count
 
 def index(request):
     search_term = request.GET.get('search')
@@ -86,3 +86,23 @@ def report_review(request, id, review_id):
     review.reported = True
     review.save()
     return redirect('movies.show', id=id)
+
+@user_passes_test(lambda u: u.is_staff)
+def top_commenter(request):
+    top = (
+        Review.objects
+        .values('user__username')
+        .annotate(comment_count=Count('id'))
+        .order_by('-comment_count')
+        .first()
+    )
+    template_data = {}
+    template_data['title'] = 'Top Commenter'
+    if top:
+        template_data['username'] = top['user__username']
+        template_data['comment_count'] = top['comment_count']
+    else:
+        template_data['username'] = None
+        template_data['comment_count'] = 0
+    return render(request, 'movies/top_commenter.html',
+                  {'template_data': template_data})
