@@ -3,7 +3,9 @@ from django.shortcuts import get_object_or_404, redirect
 from movies.models import Movie
 from .utils import calculate_cart_total
 from .models import Order, Item
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.db.models import Sum
+
 
 def index(request):
     cart_total = 0
@@ -56,3 +58,21 @@ def purchase(request):
     template_data['order_id'] = order.id
     return render(request, 'cart/purchase.html',
         {'template_data': template_data})
+
+@user_passes_test(lambda u: u.is_staff)
+def top_buyer(request):
+    topB = ( Item.objects.values('order__user__username')
+            .annotate(movies_purchased = Sum('quantity'))
+            .order_by('-movies_purchased','order__user__username')
+            .first()
+            )
+    template_data = {}
+    template_data['title'] = 'Top Buyer'
+    if topB:
+        template_data['username'] = topB['order__user__username']
+        template_data['movies_purchased'] = topB['movies_purchased']
+    else:
+        template_data['username'] = None
+        template_data['movies_purchased'] =0
+    return render(request, 'cart/top_buyer.html',
+            {'template_data': template_data})
