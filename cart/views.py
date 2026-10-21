@@ -59,6 +59,7 @@ def purchase(request):
     return render(request, 'cart/purchase.html',
         {'template_data': template_data})
 
+
 @user_passes_test(lambda u: u.is_staff)
 def top_buyer(request):
     topB = ( Item.objects.values('order__user__username')
@@ -76,3 +77,27 @@ def top_buyer(request):
         template_data['movies_purchased'] =0
     return render(request, 'cart/top_buyer.html',
             {'template_data': template_data})
+
+
+@user_passes_test(lambda u: u.is_staff)
+def top_buyers(request):
+    topB = list(
+        Item.objects.values('order__user__username')
+        .annotate(movies_purchased=Sum('quantity'))
+        .order_by('-movies_purchased', 'order__user__username')
+        .all()
+    )
+    print(topB)
+    if request.method == 'POST':
+        size = request.POST.get('size')
+        topB = topB[:int(size)] if size else topB
+
+    template_data = {
+        "title": 'Top Buyers',
+        "users": topB
+    }
+    return render(
+        request,
+        'cart/top_buyers.html',
+        {'template_data': template_data}
+    )
