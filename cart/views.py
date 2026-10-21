@@ -1,10 +1,10 @@
 from django.shortcuts import render
 from django.shortcuts import get_object_or_404, redirect
-from movies.models import Movie
+from movies.models import Movie, Review
 from .utils import calculate_cart_total
 from .models import Order, Item
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.db.models import Sum
+from django.db.models import Sum, Count
 
 
 def index(request):
@@ -78,6 +78,26 @@ def top_buyer(request):
     return render(request, 'cart/top_buyer.html',
             {'template_data': template_data})
 
+@user_passes_test(lambda u: u.is_staff)
+def movie_stats(request):
+    most_bought = (
+        Item.objects.values('movie__name')
+        .annotate(times_bought=Sum('quantity'))
+        .order_by('-times_bought', 'movie__name')
+        .first()
+    )
+    most_reviewed = (
+        Review.objects.values('movie__name')
+        .annotate(times_reviewed=Count('id'))
+        .order_by('-times_reviewed', 'movie__name')
+        .first()
+    )
+    template_data = {}
+    template_data['title'] = 'Movie Stats'
+    template_data['most_bought'] = most_bought
+    template_data['most_reviewed'] = most_reviewed
+    return render(request, 'cart/movie_stats.html',
+        {'template_data': template_data})
 
 @user_passes_test(lambda u: u.is_staff)
 def top_buyers(request):
